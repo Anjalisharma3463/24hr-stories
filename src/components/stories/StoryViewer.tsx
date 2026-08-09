@@ -597,7 +597,9 @@ export function StoryViewer({
                 'drop-shadow-[0_20px_50px_rgba(0,0,0,0.45)]',
               )}
               decoding="async"
+              fetchPriority="high"
               height={1024}
+              loading="eager"
               src={currentStory.previewUrl}
               width={768}
             />

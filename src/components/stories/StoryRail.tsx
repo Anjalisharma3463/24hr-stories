@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { mockStoryRailData } from '@/constants/mockStories'
 import type { StoryRailData, StoryRailUser } from '@/types/story'
 import { cn } from '@/utils/cn'
@@ -10,7 +11,7 @@ type StoryRailProps = {
   onSelectStory?: (story: StoryRailUser) => void
 }
 
-export function StoryRail({
+function StoryRailComponent({
   data = mockStoryRailData,
   onAddStory,
   onSelectStory,
@@ -56,3 +57,5 @@ export function StoryRail({
     </section>
   )
 }
+
+export const StoryRail = memo(StoryRailComponent)

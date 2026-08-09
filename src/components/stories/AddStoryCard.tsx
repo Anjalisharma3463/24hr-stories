@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Plus } from 'lucide-react'
 import type { CurrentUserStory } from '@/types/story'
 import { cn } from '@/utils/cn'
@@ -8,7 +9,7 @@ type AddStoryCardProps = {
   onAdd?: () => void
 }
 
-export function AddStoryCard({ user, onAdd }: AddStoryCardProps) {
+function AddStoryCardComponent({ user, onAdd }: AddStoryCardProps) {
   const label = user.hasStory ? 'Your story' : 'Add your story'
   const timestamp = user.createdAt ? formatRelativeTime(user.createdAt) : 'New'
 
@@ -81,3 +82,5 @@ export function AddStoryCard({ user, onAdd }: AddStoryCardProps) {
     </button>
   )
 }
+
+export const AddStoryCard = memo(AddStoryCardComponent)

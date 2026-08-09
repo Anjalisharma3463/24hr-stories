@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useCardTilt } from '@/hooks/useCardTilt'
 import type { StoryRailUser } from '@/types/story'
 import { cn } from '@/utils/cn'
@@ -8,7 +9,7 @@ type StoryCardProps = {
   onSelect?: (story: StoryRailUser) => void
 }
 
-export function StoryCard({ story, onSelect }: StoryCardProps) {
+function StoryCardComponent({ story, onSelect }: StoryCardProps) {
   const tiltRef = useCardTilt<HTMLDivElement>()
 
   return (
@@ -66,3 +67,5 @@ export function StoryCard({ story, onSelect }: StoryCardProps) {
     </button>
   )
 }
+
+export const StoryCard = memo(StoryCardComponent)

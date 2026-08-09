@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StoryRail, StoryViewer } from '@/components/stories'
 import { mockStoryRailData } from '@/constants/mockStories'
 import {
@@ -65,16 +65,22 @@ export function App() {
   const [stories, setStories] = useState<StoryRailUser[]>(loadInitialStories)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const lastPersistedStoriesRef = useRef<string>('')
 
-  const selectedStory =
-    stories.find((story) => story.id === selectedStoryId) ?? null
+  const selectedStory = useMemo(
+    () => stories.find((story) => story.id === selectedStoryId) ?? null,
+    [selectedStoryId, stories],
+  )
 
-  const storyRailData: StoryRailData = {
-    currentUser: mockStoryRailData.currentUser,
-    stories,
-  }
+  const storyRailData: StoryRailData = useMemo(
+    () => ({
+      currentUser: mockStoryRailData.currentUser,
+      stories,
+    }),
+    [stories],
+  )
 
-  const handleStoryViewed = (storyId: string) => {
+  const handleStoryViewed = useCallback((storyId: string) => {
     setStories((currentStories) => {
       let hasChanges = false
 
@@ -94,9 +100,9 @@ export function App() {
 
       return hasChanges ? nextStories : currentStories
     })
-  }
+  }, [])
 
-  const handleStoryDeleted = (storyId: string) => {
+  const handleStoryDeleted = useCallback((storyId: string) => {
     removeStoredStory(storyId)
 
     setStories((currentStories) => currentStories.filter((story) => story.id !== storyId))
@@ -104,21 +110,26 @@ export function App() {
     if (selectedStoryId === storyId) {
       setSelectedStoryId(null)
     }
-  }
+  }, [selectedStoryId])
+
+  const persistableStories = useMemo(
+    () => filterActiveStoredStories(getStoredStories(stories).map(createStoredStory)),
+    [stories],
+  )
 
   useEffect(() => {
-    const activeStoredStories = filterActiveStoredStories(
-      getStoredStories(stories).map(createStoredStory),
-    )
+    const nextPersistedStories = JSON.stringify(persistableStories)
 
-    saveStoredStories(activeStoredStories)
-  }, [stories])
+    if (lastPersistedStoriesRef.current === nextPersistedStories) {
+      return
+    }
+
+    lastPersistedStoriesRef.current = nextPersistedStories
+    saveStoredStories(persistableStories)
+  }, [persistableStories])
 
   useEffect(() => {
-    const activeStoredStories = getStoredStories(stories)
-    const delay = getNextStoredStoryExpirationDelay(
-      activeStoredStories.map(createStoredStory),
-    )
+    const delay = getNextStoredStoryExpirationDelay(persistableStories)
 
     if (delay === null) {
       return
@@ -138,6 +149,7 @@ export function App() {
           getStoredStories(nextStories).map(createStoredStory),
         )
 
+        lastPersistedStoriesRef.current = JSON.stringify(nextStoredStories)
         saveStoredStories(nextStoredStories)
 
         return nextStories
@@ -147,9 +159,9 @@ export function App() {
     return () => {
       window.clearTimeout(timeoutId)
     }
-  }, [stories])
+  }, [persistableStories])
 
-  const handleAddStory = async () => {
+  const handleAddStory = useCallback(async () => {
     const input = document.createElement('input')
 
     input.type = 'file'
@@ -191,25 +203,37 @@ export function App() {
 
     setStories((currentStories) => {
       const nextStories = sortStoriesByNewest([newStory, ...currentStories])
-
-      saveStoredStories(
-        filterActiveStoredStories(
-          getStoredStories(nextStories).map(createStoredStory),
-        ),
+      const nextPersistedStories = filterActiveStoredStories(
+        getStoredStories(nextStories).map(createStoredStory),
       )
+
+      lastPersistedStoriesRef.current = JSON.stringify(nextPersistedStories)
+      saveStoredStories(nextPersistedStories)
 
       return nextStories
     })
-  }
+  }, [])
 
-  const handleOpenUpload = () => {
+  const handleOpenUpload = useCallback(() => {
     setIsUploadModalOpen(true)
-  }
+  }, [])
 
-  const handleChooseUpload = () => {
+  const handleChooseUpload = useCallback(() => {
     setIsUploadModalOpen(false)
     void handleAddStory()
-  }
+  }, [handleAddStory])
+
+  const handleCloseUpload = useCallback(() => {
+    setIsUploadModalOpen(false)
+  }, [])
+
+  const handleCloseViewer = useCallback(() => {
+    setSelectedStoryId(null)
+  }, [])
+
+  const handleSelectStory = useCallback((story: StoryRailUser) => {
+    setSelectedStoryId(story.id)
+  }, [])
 
   return (
     <div className="app-shell min-h-dvh bg-background text-foreground">
@@ -220,10 +244,8 @@ export function App() {
       <main className="relative flex min-h-dvh flex-col py-safe">
         <StoryRail
           data={storyRailData}
-          onAddStory={() => {
-            handleOpenUpload()
-          }}
-          onSelectStory={(story) => setSelectedStoryId(story.id)}
+          onAddStory={handleOpenUpload}
+          onSelectStory={handleSelectStory}
         />
       </main>
 
@@ -233,7 +255,7 @@ export function App() {
         onStoryDeleted={handleStoryDeleted}
         onStoryViewed={handleStoryViewed}
         initialStoryId={selectedStory?.id ?? null}
-        onClose={() => setSelectedStoryId(null)}
+        onClose={handleCloseViewer}
         open={selectedStory !== null}
         stories={stories}
       />
@@ -248,7 +270,7 @@ export function App() {
             aria-label="Close upload dialog"
             className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
             type="button"
-            onClick={() => setIsUploadModalOpen(false)}
+            onClick={handleCloseUpload}
           />
 
           <section
@@ -291,7 +313,7 @@ export function App() {
                 <button
                   className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] px-5 text-sm font-medium text-foreground transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] active:translate-y-0 active:scale-[0.98]"
                   type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
+                  onClick={handleCloseUpload}
                 >
                   Cancel
                 </button>
