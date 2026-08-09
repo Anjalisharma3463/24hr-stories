@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StoryRail, StoryViewer } from '@/components/stories'
 import { mockStoryRailData } from '@/constants/mockStories'
 import {
   createStoredStory,
+  filterActiveStoredStories,
   fromStoredStory,
   loadStoredStories,
+  getNextStoredStoryExpirationDelay,
   saveStoredStories,
 } from '@/services'
 import type { StoryRailData, StoryRailUser } from '@/types/story'
@@ -15,6 +17,20 @@ const sortStoriesByNewest = (stories: StoryRailUser[]) =>
       new Date(rightStory.createdAt).getTime() -
       new Date(leftStory.createdAt).getTime(),
   )
+
+  const getStoredStories = (stories: StoryRailUser[]) =>
+    stories.filter((story): story is StoryRailUser & { expiresAt: string } =>
+      typeof story.expiresAt === 'string',
+    )
+
+  const loadInitialStories = () => {
+    const storedStories = filterActiveStoredStories(loadStoredStories())
+
+    return sortStoriesByNewest([
+      ...mockStoryRailData.stories,
+      ...storedStories.map(fromStoredStory),
+    ])
+  }
 
 const createRandomId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -44,26 +60,60 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
     reader.readAsDataURL(file)
   })
 
-const initialStories = sortStoriesByNewest([
-  ...mockStoryRailData.stories,
-  ...loadStoredStories().map(fromStoredStory),
-])
-
-const initialStoryRailData: StoryRailData = {
-  currentUser: mockStoryRailData.currentUser,
-  stories: initialStories,
-}
-
 export function App() {
-  const [stories, setStories] = useState<StoryRailUser[]>(initialStories)
+  const [stories, setStories] = useState<StoryRailUser[]>(loadInitialStories)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
 
-  const selectedStory = stories.find((story) => story.id === selectedStoryId) ?? null
+  const selectedStory =
+    stories.find((story) => story.id === selectedStoryId) ?? null
 
   const storyRailData: StoryRailData = {
-    ...initialStoryRailData,
+    currentUser: mockStoryRailData.currentUser,
     stories,
   }
+
+  useEffect(() => {
+    const activeStoredStories = filterActiveStoredStories(
+      getStoredStories(stories).map(createStoredStory),
+    )
+
+    saveStoredStories(activeStoredStories)
+  }, [stories])
+
+  useEffect(() => {
+    const activeStoredStories = getStoredStories(stories)
+    const delay = getNextStoredStoryExpirationDelay(
+      activeStoredStories.map(createStoredStory),
+    )
+
+    if (delay === null) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setStories((currentStories) => {
+        const nextStories = currentStories.filter((story) => {
+          if (story.expiresAt) {
+            return new Date(story.expiresAt).getTime() > Date.now()
+          }
+
+          return true
+        })
+
+        const nextStoredStories = filterActiveStoredStories(
+          getStoredStories(nextStories).map(createStoredStory),
+        )
+
+        saveStoredStories(nextStoredStories)
+
+        return nextStories
+      })
+    }, delay)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [stories])
 
   const handleAddStory = async () => {
     const input = document.createElement('input')
@@ -100,6 +150,7 @@ export function App() {
       avatarUrl: mockStoryRailData.currentUser.avatarUrl,
       previewUrl: imageData,
       createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       seen: false,
     }
 
@@ -107,9 +158,9 @@ export function App() {
       const nextStories = sortStoriesByNewest([newStory, ...currentStories])
 
       saveStoredStories(
-        nextStories
-          .filter((story) => !mockStoryRailData.stories.some(({ id }) => id === story.id))
-          .map(createStoredStory),
+        filterActiveStoredStories(
+          getStoredStories(nextStories).map(createStoredStory),
+        ),
       )
 
       return nextStories

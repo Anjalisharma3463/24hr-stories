@@ -1,39 +1,66 @@
 import type { StoryRailUser } from '@/types/story'
 
 const STORY_STORAGE_KEY = '24hr-stories:stories'
+const STORY_TTL_MS = 24 * 60 * 60 * 1000
 
 export type StoredStory = {
   id: string
   imageData: string
   username: string
   createdAt: string
+  expiresAt: string
 }
 
-const isStoredStory = (value: unknown): value is StoredStory => {
+const isValidTimestamp = (value: string) => !Number.isNaN(new Date(value).getTime())
+
+const addStoryTtl = (createdAt: string) =>
+  new Date(new Date(createdAt).getTime() + STORY_TTL_MS).toISOString()
+
+const normalizeExpiry = (createdAt: string, expiresAt?: string) =>
+  expiresAt && isValidTimestamp(expiresAt) ? expiresAt : addStoryTtl(createdAt)
+
+const normalizeStoredStory = (value: unknown): StoredStory | null => {
   if (!value || typeof value !== 'object') {
-    return false
+    return null
   }
 
   const candidate = value as Record<string, unknown>
 
-  return (
-    typeof candidate.id === 'string' &&
-    typeof candidate.imageData === 'string' &&
-    typeof candidate.username === 'string' &&
-    typeof candidate.createdAt === 'string'
-  )
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.imageData !== 'string' ||
+    typeof candidate.username !== 'string' ||
+    typeof candidate.createdAt !== 'string' ||
+    !isValidTimestamp(candidate.createdAt)
+  ) {
+    return null
+  }
+
+  return {
+    id: candidate.id,
+    imageData: candidate.imageData,
+    username: candidate.username,
+    createdAt: candidate.createdAt,
+    expiresAt: normalizeExpiry(
+      candidate.createdAt,
+      typeof candidate.expiresAt === 'string' ? candidate.expiresAt : undefined,
+    ),
+  }
 }
 
 const toAvatarUrl = (username: string) =>
   `https://picsum.photos/seed/${encodeURIComponent(username)}-story-avatar/128/128`
 
 export const createStoredStory = (
-  story: Pick<StoryRailUser, 'id' | 'previewUrl' | 'username' | 'createdAt'>,
+  story: Pick<StoryRailUser, 'id' | 'previewUrl' | 'username' | 'createdAt'> & {
+    expiresAt?: string
+  },
 ): StoredStory => ({
   id: story.id,
   imageData: story.previewUrl,
   username: story.username,
   createdAt: story.createdAt,
+  expiresAt: normalizeExpiry(story.createdAt, story.expiresAt),
 })
 
 export const fromStoredStory = (story: StoredStory): StoryRailUser => ({
@@ -42,8 +69,44 @@ export const fromStoredStory = (story: StoredStory): StoryRailUser => ({
   avatarUrl: toAvatarUrl(story.username),
   previewUrl: story.imageData,
   createdAt: story.createdAt,
+  expiresAt: story.expiresAt,
   seen: false,
 })
+
+export const isStoryExpired = (story: Pick<StoredStory, 'expiresAt'>, now = Date.now()) =>
+  (() => {
+    const expiresAtTime = new Date(story.expiresAt).getTime()
+
+    return Number.isNaN(expiresAtTime) || expiresAtTime <= now
+  })()
+
+export const filterActiveStoredStories = (stories: StoredStory[], now = Date.now()) =>
+  stories.filter((story) => !isStoryExpired(story, now))
+
+export const getNextStoredStoryExpirationDelay = (
+  stories: StoredStory[],
+  now = Date.now(),
+) => {
+  const nextExpiration = stories.reduce<number | null>((soonest, story) => {
+    const expiresAt = new Date(story.expiresAt).getTime()
+
+    if (Number.isNaN(expiresAt) || expiresAt <= now) {
+      return soonest
+    }
+
+    if (soonest === null || expiresAt < soonest) {
+      return expiresAt
+    }
+
+    return soonest
+  }, null)
+
+  if (nextExpiration === null) {
+    return null
+  }
+
+  return Math.max(nextExpiration - now, 0)
+}
 
 export const loadStoredStories = (): StoredStory[] => {
   if (typeof window === 'undefined') {
@@ -63,7 +126,9 @@ export const loadStoredStories = (): StoredStory[] => {
       return []
     }
 
-    return parsedStories.filter(isStoredStory)
+    return parsedStories.map(normalizeStoredStory).filter(
+      (story): story is StoredStory => story !== null,
+    )
   } catch {
     return []
   }

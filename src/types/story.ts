@@ -4,6 +4,7 @@ export type StoryRailUser = {
   avatarUrl: string
   previewUrl: string
   createdAt: string
+  expiresAt?: string
   seen: boolean
 }
 
