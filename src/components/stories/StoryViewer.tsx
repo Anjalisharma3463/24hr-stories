@@ -448,7 +448,7 @@ export function StoryViewer({
       <div
         aria-hidden="true"
         className={cn(
-          'absolute inset-0 scale-110 bg-cover bg-center blur-3xl transition-[opacity,transform] duration-500 ease-out',
+          'absolute inset-0 scale-110 bg-cover bg-center blur-3xl transition-[opacity,transform] duration-700 ease-out',
           isReady ? 'opacity-45' : 'opacity-0',
           prefersReducedMotion && 'transition-none',
         )}
@@ -460,15 +460,15 @@ export function StoryViewer({
 
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_48%),linear-gradient(180deg,rgba(0,0,0,0.28),rgba(0,0,0,0.82))]"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_48%),radial-gradient(circle_at_20%_20%,rgba(168,85,247,0.18),transparent_30%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.84))]"
       />
 
       {canDeleteCurrentStory ? (
         <button
           aria-label="Delete story"
           className={cn(
-            'absolute right-4 top-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-black/35 px-4 text-sm font-medium text-white shadow-lg shadow-black/30 backdrop-blur-sm',
-            'transition-transform duration-200 hover:scale-105 active:scale-95',
+            'absolute right-4 top-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 text-sm font-medium text-white shadow-[0_12px_32px_rgba(0,0,0,0.32)] backdrop-blur-xl',
+            'transition-[transform,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:bg-white/12 active:translate-y-0 active:scale-[0.98]',
             prefersReducedMotion && 'transition-none hover:scale-100 active:scale-100',
           )}
           type="button"
@@ -574,8 +574,8 @@ export function StoryViewer({
             onPointerUp={handlePointerUp}
             onTransitionEnd={handleCardTransitionEnd}
             className={cn(
-              'relative w-full max-w-[min(92vw,26rem)] overflow-hidden rounded-[1.75rem] border border-white/12 bg-black/30 shadow-[0_30px_120px_rgba(0,0,0,0.6)] backdrop-blur-sm',
-              'touch-none transition-[transform,opacity] ease-out',
+                'relative w-full max-w-[min(92vw,26rem)] overflow-hidden rounded-[1.9rem] border border-white/12 bg-white/8 shadow-[0_32px_140px_rgba(0,0,0,0.58)] backdrop-blur-xl',
+                'touch-none transition-[transform,opacity,filter] ease-out will-change-transform',
               isReady
                 ? 'translate-y-0 scale-100 opacity-100'
                 : 'translate-y-4 scale-[0.98] opacity-0',
@@ -588,11 +588,14 @@ export function StoryViewer({
           >
             <div
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/35"
+              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(255,255,255,0.16),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.34))]"
             />
             <img
               alt={`${currentStory.username}'s story`}
-              className="relative z-10 h-auto w-full object-contain"
+              className={cn(
+                'relative z-10 h-auto w-full object-contain',
+                'drop-shadow-[0_20px_50px_rgba(0,0,0,0.45)]',
+              )}
               decoding="async"
               height={1024}
               src={currentStory.previewUrl}
@@ -619,7 +622,7 @@ export function StoryViewer({
             aria-describedby="story-delete-description"
             aria-modal="true"
             className={cn(
-              'relative z-10 w-full max-w-sm rounded-2xl border border-white/12 bg-background-elevated p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.55)]',
+              'relative z-10 w-full max-w-sm rounded-2xl border border-white/12 bg-background-elevated/95 p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl',
               prefersReducedMotion && 'transition-none',
             )}
             role="alertdialog"

@@ -64,6 +64,7 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
 export function App() {
   const [stories, setStories] = useState<StoryRailUser[]>(loadInitialStories)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   const selectedStory =
     stories.find((story) => story.id === selectedStoryId) ?? null
@@ -201,13 +202,26 @@ export function App() {
     })
   }
 
+  const handleOpenUpload = () => {
+    setIsUploadModalOpen(true)
+  }
+
+  const handleChooseUpload = () => {
+    setIsUploadModalOpen(false)
+    void handleAddStory()
+  }
+
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <main className="flex min-h-dvh flex-col py-safe">
+    <div className="app-shell min-h-dvh bg-background text-foreground">
+      <div aria-hidden="true" className="app-ambient app-ambient--one" />
+      <div aria-hidden="true" className="app-ambient app-ambient--two" />
+      <div aria-hidden="true" className="app-ambient app-ambient--three" />
+
+      <main className="relative flex min-h-dvh flex-col py-safe">
         <StoryRail
           data={storyRailData}
           onAddStory={() => {
-            void handleAddStory()
+            handleOpenUpload()
           }}
           onSelectStory={(story) => setSelectedStoryId(story.id)}
         />
@@ -223,6 +237,76 @@ export function App() {
         open={selectedStory !== null}
         stories={stories}
       />
+
+      {isUploadModalOpen ? (
+        <div
+          aria-hidden="false"
+          className="fixed inset-0 z-40 flex items-center justify-center px-safe py-safe"
+          role="presentation"
+        >
+          <button
+            aria-label="Close upload dialog"
+            className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+            type="button"
+            onClick={() => setIsUploadModalOpen(false)}
+          />
+
+          <section
+            aria-labelledby="upload-story-title"
+            aria-describedby="upload-story-description"
+            aria-modal="true"
+            className="upload-modal glass-surface relative z-10 w-full max-w-lg overflow-hidden rounded-[1.75rem] border border-white/12 bg-background-elevated/90 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.55)] sm:p-6"
+            role="dialog"
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            <div className="absolute -left-20 -top-20 size-48 rounded-full bg-accent/20 blur-3xl" />
+            <div className="absolute -bottom-24 -right-20 size-56 rounded-full bg-cyan-400/10 blur-3xl" />
+
+            <div className="relative z-10 space-y-5">
+              <div className="space-y-2">
+                <p className="text-[0.6875rem] font-medium tracking-[0.2em] text-accent uppercase">
+                  Upload Story
+                </p>
+                <h2 id="upload-story-title" className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+                  Add a new moment
+                </h2>
+                <p id="upload-story-description" className="max-w-md text-sm leading-relaxed text-muted sm:text-[0.9375rem]">
+                  Pick a photo from your device. It will appear instantly in the rail and expire in 24 hours.
+                </p>
+              </div>
+
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-5">
+                <div className="upload-dropzone flex min-h-40 flex-col items-center justify-center gap-3 rounded-[1.25rem] border border-dashed border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] px-6 py-8 text-center">
+                  <div className="upload-dropzone__orb" aria-hidden="true" />
+                  <div className="relative z-10 space-y-1.5">
+                    <p className="text-sm font-medium text-foreground sm:text-base">Image upload</p>
+                    <p className="text-xs leading-relaxed text-muted sm:text-sm">
+                      JPG, PNG, or WEBP. No extra steps, just choose and post.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] px-5 text-sm font-medium text-foreground transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] active:translate-y-0 active:scale-[0.98]"
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-linear-to-r from-accent to-cyan-400 px-5 text-sm font-semibold text-white shadow-[0_14px_40px_rgba(168,85,247,0.35)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(168,85,247,0.42)] active:translate-y-0 active:scale-[0.98]"
+                  type="button"
+                  onClick={handleChooseUpload}
+                >
+                  Choose photo
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   )
 }
