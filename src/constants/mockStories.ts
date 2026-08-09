@@ -17,6 +17,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/maya-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/maya-story/144/192',
       createdAt: hoursAgo(1),
+      viewed: false,
       seen: false,
     },
     {
@@ -25,6 +26,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/alex-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/alex-story/144/192',
       createdAt: hoursAgo(2),
+      viewed: false,
       seen: false,
     },
     {
@@ -33,6 +35,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/sora-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/sora-story/144/192',
       createdAt: hoursAgo(3),
+      viewed: true,
       seen: true,
     },
     {
@@ -41,6 +44,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/nina-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/nina-story/144/192',
       createdAt: hoursAgo(5),
+      viewed: false,
       seen: false,
     },
     {
@@ -49,6 +53,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/leo-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/leo-story/144/192',
       createdAt: hoursAgo(8),
+      viewed: true,
       seen: true,
     },
     {
@@ -57,6 +62,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/zara-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/zara-story/144/192',
       createdAt: hoursAgo(12),
+      viewed: false,
       seen: false,
     },
     {
@@ -65,6 +71,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/kai-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/kai-story/144/192',
       createdAt: hoursAgo(16),
+      viewed: true,
       seen: true,
     },
     {
@@ -73,6 +80,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/ivy-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/ivy-story/144/192',
       createdAt: hoursAgo(20),
+      viewed: false,
       seen: false,
     },
     {
@@ -81,6 +89,7 @@ export const mockStoryRailData: StoryRailData = {
       avatarUrl: 'https://picsum.photos/seed/remy-avatar/128/128',
       previewUrl: 'https://picsum.photos/seed/remy-story/144/192',
       createdAt: hoursAgo(22),
+      viewed: true,
       seen: true,
     },
   ],

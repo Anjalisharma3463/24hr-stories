@@ -5,6 +5,7 @@ export type StoryRailUser = {
   previewUrl: string
   createdAt: string
   expiresAt?: string
+  viewed: boolean
   seen: boolean
 }
 

@@ -9,6 +9,7 @@ export type StoredStory = {
   username: string
   createdAt: string
   expiresAt: string
+  viewed: boolean
 }
 
 const isValidTimestamp = (value: string) => !Number.isNaN(new Date(value).getTime())
@@ -18,6 +19,13 @@ const addStoryTtl = (createdAt: string) =>
 
 const normalizeExpiry = (createdAt: string, expiresAt?: string) =>
   expiresAt && isValidTimestamp(expiresAt) ? expiresAt : addStoryTtl(createdAt)
+
+const normalizeViewed = (candidate: Record<string, unknown>) =>
+  typeof candidate.viewed === 'boolean'
+    ? candidate.viewed
+    : typeof candidate.seen === 'boolean'
+      ? candidate.seen
+      : false
 
 const normalizeStoredStory = (value: unknown): StoredStory | null => {
   if (!value || typeof value !== 'object') {
@@ -45,6 +53,7 @@ const normalizeStoredStory = (value: unknown): StoredStory | null => {
       candidate.createdAt,
       typeof candidate.expiresAt === 'string' ? candidate.expiresAt : undefined,
     ),
+    viewed: normalizeViewed(candidate),
   }
 }
 
@@ -52,7 +61,7 @@ const toAvatarUrl = (username: string) =>
   `https://picsum.photos/seed/${encodeURIComponent(username)}-story-avatar/128/128`
 
 export const createStoredStory = (
-  story: Pick<StoryRailUser, 'id' | 'previewUrl' | 'username' | 'createdAt'> & {
+  story: Pick<StoryRailUser, 'id' | 'previewUrl' | 'username' | 'createdAt' | 'viewed'> & {
     expiresAt?: string
   },
 ): StoredStory => ({
@@ -61,6 +70,7 @@ export const createStoredStory = (
   username: story.username,
   createdAt: story.createdAt,
   expiresAt: normalizeExpiry(story.createdAt, story.expiresAt),
+  viewed: story.viewed,
 })
 
 export const fromStoredStory = (story: StoredStory): StoryRailUser => ({
@@ -70,7 +80,8 @@ export const fromStoredStory = (story: StoredStory): StoryRailUser => ({
   previewUrl: story.imageData,
   createdAt: story.createdAt,
   expiresAt: story.expiresAt,
-  seen: false,
+  viewed: story.viewed,
+  seen: story.viewed,
 })
 
 export const isStoryExpired = (story: Pick<StoredStory, 'expiresAt'>, now = Date.now()) =>

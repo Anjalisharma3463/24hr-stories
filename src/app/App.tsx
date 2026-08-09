@@ -18,19 +18,19 @@ const sortStoriesByNewest = (stories: StoryRailUser[]) =>
       new Date(leftStory.createdAt).getTime(),
   )
 
-  const getStoredStories = (stories: StoryRailUser[]) =>
-    stories.filter((story): story is StoryRailUser & { expiresAt: string } =>
-      typeof story.expiresAt === 'string',
-    )
+const getStoredStories = (stories: StoryRailUser[]) =>
+  stories.filter((story): story is StoryRailUser & { expiresAt: string } =>
+    typeof story.expiresAt === 'string',
+  )
 
-  const loadInitialStories = () => {
-    const storedStories = filterActiveStoredStories(loadStoredStories())
+const loadInitialStories = () => {
+  const storedStories = filterActiveStoredStories(loadStoredStories())
 
-    return sortStoriesByNewest([
-      ...mockStoryRailData.stories,
-      ...storedStories.map(fromStoredStory),
-    ])
-  }
+  return sortStoriesByNewest([
+    ...mockStoryRailData.stories,
+    ...storedStories.map(fromStoredStory),
+  ])
+}
 
 const createRandomId = () => {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -70,6 +70,28 @@ export function App() {
   const storyRailData: StoryRailData = {
     currentUser: mockStoryRailData.currentUser,
     stories,
+  }
+
+  const handleStoryViewed = (storyId: string) => {
+    setStories((currentStories) => {
+      let hasChanges = false
+
+      const nextStories = currentStories.map((story) => {
+        if (story.id !== storyId || story.viewed) {
+          return story
+        }
+
+        hasChanges = true
+
+        return {
+          ...story,
+          viewed: true,
+          seen: true,
+        }
+      })
+
+      return hasChanges ? nextStories : currentStories
+    })
   }
 
   useEffect(() => {
@@ -151,6 +173,7 @@ export function App() {
       previewUrl: imageData,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      viewed: false,
       seen: false,
     }
 
@@ -181,6 +204,7 @@ export function App() {
 
       <StoryViewer
         key={selectedStory?.id ?? 'closed'}
+        onStoryViewed={handleStoryViewed}
         initialStoryId={selectedStory?.id ?? null}
         onClose={() => setSelectedStoryId(null)}
         open={selectedStory !== null}

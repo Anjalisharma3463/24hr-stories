@@ -14,6 +14,7 @@ type StoryViewerProps = {
   stories: StoryRailUser[]
   initialStoryId: string | null
   onClose: () => void
+  onStoryViewed?: (storyId: string) => void
 }
 
 function usePrefersReducedMotion() {
@@ -43,6 +44,7 @@ export function StoryViewer({
   stories,
   initialStoryId,
   onClose,
+  onStoryViewed,
 }: StoryViewerProps) {
   const prefersReducedMotion = usePrefersReducedMotion()
   const [currentIndex, setCurrentIndex] = useState(() => {
@@ -67,6 +69,8 @@ export function StoryViewer({
   const gestureTargetRef = useRef<HTMLElement | null>(null)
   const pendingIndexRef = useRef<number | null>(null)
   const swipeDirectionRef = useRef<-1 | 1 | null>(null)
+  const reportedStoryIdRef = useRef<string | null>(null)
+  const currentStoryId = stories[currentIndex]?.id ?? null
 
   useEffect(() => {
     if (!open) {
@@ -81,6 +85,19 @@ export function StoryViewer({
       window.cancelAnimationFrame(frame)
     }
   }, [currentIndex, open])
+
+  useEffect(() => {
+    if (!open || !onStoryViewed || !currentStoryId) {
+      return
+    }
+
+    if (reportedStoryIdRef.current === currentStoryId) {
+      return
+    }
+
+    reportedStoryIdRef.current = currentStoryId
+    onStoryViewed(currentStoryId)
+  }, [currentStoryId, onStoryViewed, open])
 
   useEffect(() => {
     pendingIndexRef.current = pendingIndex
