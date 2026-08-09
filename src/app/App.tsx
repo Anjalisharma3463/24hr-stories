@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AuthScreen } from '@/components/auth/AuthScreen'
 import { StoryRail, StoryViewer } from '@/components/stories'
 import { mockStoryRailData } from '@/constants/mockStories'
+import { useAuth } from '@/app/authContext'
 import { cn } from '@/utils/cn'
 import { formatRelativeTime } from '@/utils/formatRelativeTime'
 import {
@@ -124,11 +126,41 @@ const resizeImageDataUrl = async (file: File) => {
 }
 
 export function App() {
+  const { session, profile, loading, authError, signIn, signUp, signOut } = useAuth()
   const [stories, setStories] = useState<StoryRailUser[]>(loadInitialStories)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [dashboardNow, setDashboardNow] = useState<number | null>(null)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
   const lastPersistedStoriesRef = useRef<string>('')
+
+  useEffect(() => {
+    if (loading) {
+      return
+    }
+
+    const targetPath = session ? '/' : '/login'
+
+    if (window.location.pathname !== targetPath) {
+      window.history.replaceState({}, '', targetPath)
+    }
+  }, [loading, session])
+
+const currentUserStory = useMemo(
+  () => ({
+    id: profile?.id ?? mockStoryRailData.currentUser.id,
+    username:
+      profile?.displayName?.trim() ||
+      profile?.username?.trim() ||
+      session?.user.email?.split('@')[0] ||
+      mockStoryRailData.currentUser.username,
+    avatarUrl: profile?.avatarUrl ?? mockStoryRailData.currentUser.avatarUrl,
+    hasStory: false,
+    previewUrl: undefined,
+    createdAt: profile?.createdAt,
+  }),
+  [profile, session],
+)
 
   const selectedStory = useMemo(
     () => stories.find((story) => story.id === selectedStoryId) ?? null,
@@ -137,11 +169,21 @@ export function App() {
 
   const storyRailData: StoryRailData = useMemo(
     () => ({
-      currentUser: mockStoryRailData.currentUser,
+      currentUser: currentUserStory,
       stories,
     }),
-    [stories],
+    [currentUserStory, stories],
   )
+
+  const handleLogout = useCallback(async () => {
+    setLogoutError(null)
+
+    try {
+      await signOut()
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Failed to sign out.')
+    }
+  }, [signOut])
 
   const dashboardStats = useMemo(() => {
     const viewedStories = stories.filter((story) => story.viewed)
@@ -361,6 +403,29 @@ export function App() {
     setSelectedStoryId(story.id)
   }, [])
 
+  if (loading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background text-foreground">
+        <div className="glass-surface rounded-[2rem] border border-white/12 px-6 py-5 text-center">
+          <p className="text-[0.6875rem] font-medium tracking-[0.24em] text-accent uppercase">
+            Loading session
+          </p>
+          <p className="mt-2 text-sm text-muted">Checking your Supabase authentication state…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <AuthScreen
+        authError={authError}
+        onSignIn={signIn}
+        onSignUp={signUp}
+      />
+    )
+  }
+
   function formatDurationLabel(milliseconds: number) {
     const safeMilliseconds = Math.max(milliseconds, 0)
     const totalMinutes = Math.floor(safeMilliseconds / 60000)
@@ -409,25 +474,43 @@ export function App() {
 
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
-                <p className="text-sm font-medium text-foreground">You</p>
-                <p className="text-[0.6875rem] text-muted">Creative lead</p>
+                <p className="text-sm font-medium text-foreground">
+                  {currentUserStory.username}
+                </p>
+                <p className="truncate text-[0.6875rem] text-muted">
+                  {profile?.username ? `@${profile.username}` : session.user.email ?? 'Signed in'}
+                </p>
               </div>
-              <button
-                className="studio-avatar ring-1 ring-white/12"
-                type="button"
-                onClick={handleOpenUpload}
-              >
-                <img
-                  alt="Your profile"
-                  className="h-full w-full rounded-full object-cover"
-                  decoding="async"
-                  height={40}
-                  src={mockStoryRailData.currentUser.avatarUrl}
-                  width={40}
-                />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="studio-avatar ring-1 ring-white/12"
+                  type="button"
+                  onClick={handleOpenUpload}
+                >
+                  <img
+                    alt="Your profile"
+                    className="h-full w-full rounded-full object-cover"
+                    decoding="async"
+                    height={40}
+                    src={currentUserStory.avatarUrl}
+                    width={40}
+                  />
+                </button>
+                <button
+                  className="studio-button studio-button--small"
+                  type="button"
+                  onClick={() => void handleLogout()}
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
+          {logoutError ? (
+            <div className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {logoutError}
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -671,7 +754,7 @@ export function App() {
 
       <StoryViewer
         key={selectedStory?.id ?? 'closed'}
-        currentUserUsername={mockStoryRailData.currentUser.username}
+        currentUserUsername={currentUserStory.username}
         onStoryDeleted={handleStoryDeleted}
         onStoryViewed={handleStoryViewed}
         initialStoryId={selectedStory?.id ?? null}
