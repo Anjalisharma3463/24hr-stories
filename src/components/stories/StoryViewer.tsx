@@ -15,6 +15,8 @@ type StoryViewerProps = {
   initialStoryId: string | null
   onClose: () => void
   onStoryViewed?: (storyId: string) => void
+  onStoryDeleted?: (storyId: string) => void
+  currentUserUsername: string
 }
 
 function usePrefersReducedMotion() {
@@ -45,6 +47,8 @@ export function StoryViewer({
   initialStoryId,
   onClose,
   onStoryViewed,
+  onStoryDeleted,
+  currentUserUsername,
 }: StoryViewerProps) {
   const prefersReducedMotion = usePrefersReducedMotion()
   const [currentIndex, setCurrentIndex] = useState(() => {
@@ -57,6 +61,7 @@ export function StoryViewer({
   const [entryOffset, setEntryOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [pendingIndex, setPendingIndex] = useState<number | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const pointerRef = useRef<{
     id: number
     startX: number
@@ -71,6 +76,8 @@ export function StoryViewer({
   const swipeDirectionRef = useRef<-1 | 1 | null>(null)
   const reportedStoryIdRef = useRef<string | null>(null)
   const currentStoryId = stories[currentIndex]?.id ?? null
+  const currentStory = stories[currentIndex] ?? null
+  const canDeleteCurrentStory = currentStory?.username === currentUserUsername
 
   useEffect(() => {
     if (!open) {
@@ -104,7 +111,7 @@ export function StoryViewer({
   }, [pendingIndex])
 
   useEffect(() => {
-    if (!open || stories.length === 0) {
+    if (!open || stories.length === 0 || isDeleteDialogOpen) {
       return
     }
 
@@ -121,7 +128,7 @@ export function StoryViewer({
     return () => {
       window.clearTimeout(timer)
     }
-  }, [currentIndex, onClose, open, stories.length])
+  }, [currentIndex, isDeleteDialogOpen, onClose, open, stories.length])
 
   useEffect(() => {
     if (!open) {
@@ -141,6 +148,25 @@ export function StoryViewer({
       document.body.style.paddingRight = previousPaddingRight
     }
   }, [open])
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsDeleteDialogOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isDeleteDialogOpen])
 
   const finishSwipeTransition = (nextIndex: number) => {
     setIsReady(false)
@@ -164,6 +190,10 @@ export function StoryViewer({
   const handlePointerDown = (
     event: PointerEvent<HTMLDivElement>,
   ) => {
+    if (isDeleteDialogOpen) {
+      return
+    }
+
     if (event.button !== 0) {
       return
     }
@@ -196,6 +226,10 @@ export function StoryViewer({
   const handlePointerMove = (
     event: PointerEvent<HTMLDivElement>,
   ) => {
+    if (isDeleteDialogOpen) {
+      return
+    }
+
     const pointer = pointerRef.current
 
     if (!pointer || pointer.id !== event.pointerId || pendingIndexRef.current !== null) {
@@ -228,6 +262,10 @@ export function StoryViewer({
   const handlePointerUp = (
     event: PointerEvent<HTMLDivElement>,
   ) => {
+    if (isDeleteDialogOpen) {
+      return
+    }
+
     const pointer = pointerRef.current
 
     if (!pointer || pointer.id !== event.pointerId) {
@@ -328,12 +366,30 @@ export function StoryViewer({
     finishSwipeTransition(nextIndex)
   }
 
+  const handleDeleteConfirm = () => {
+    if (!currentStory) {
+      setIsDeleteDialogOpen(false)
+      return
+    }
+
+    onStoryDeleted?.(currentStory.id)
+    setIsDeleteDialogOpen(false)
+
+    if (currentStory.id === currentStoryId) {
+      onClose()
+    }
+  }
+
   useEffect(() => {
     if (!open) {
       return
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isDeleteDialogOpen) {
+        return
+      }
+
       if (event.key === 'Escape') {
         event.preventDefault()
         onClose()
@@ -368,13 +424,11 @@ export function StoryViewer({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [currentIndex, onClose, open, stories.length])
+  }, [currentIndex, isDeleteDialogOpen, onClose, open, stories.length])
 
   if (!open || stories.length === 0) {
     return null
   }
-
-  const currentStory = stories[currentIndex]
   const currentTransformX = isDragging ? dragOffset : pendingIndex !== null ? dragOffset : isReady ? 0 : entryOffset
   const transitionMs = prefersReducedMotion
     ? 1
@@ -408,6 +462,21 @@ export function StoryViewer({
         aria-hidden="true"
         className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_48%),linear-gradient(180deg,rgba(0,0,0,0.28),rgba(0,0,0,0.82))]"
       />
+
+      {canDeleteCurrentStory ? (
+        <button
+          aria-label="Delete story"
+          className={cn(
+            'absolute right-4 top-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-black/35 px-4 text-sm font-medium text-white shadow-lg shadow-black/30 backdrop-blur-sm',
+            'transition-transform duration-200 hover:scale-105 active:scale-95',
+            prefersReducedMotion && 'transition-none hover:scale-100 active:scale-100',
+          )}
+          type="button"
+          onClick={() => setIsDeleteDialogOpen(true)}
+        >
+          Delete
+        </button>
+      ) : null}
 
       <button
         aria-label="Previous story"
@@ -532,6 +601,63 @@ export function StoryViewer({
           </div>
         </div>
       </div>
+
+      {isDeleteDialogOpen && currentStory ? (
+        <div
+          aria-hidden="false"
+          className="absolute inset-0 z-40 flex items-center justify-center px-4"
+        >
+          <button
+            aria-label="Close delete confirmation"
+            className="absolute inset-0 bg-black/55"
+            type="button"
+            onClick={() => setIsDeleteDialogOpen(false)}
+          />
+
+          <div
+            aria-labelledby="story-delete-title"
+            aria-describedby="story-delete-description"
+            aria-modal="true"
+            className={cn(
+              'relative z-10 w-full max-w-sm rounded-2xl border border-white/12 bg-background-elevated p-5 text-left shadow-[0_24px_80px_rgba(0,0,0,0.55)]',
+              prefersReducedMotion && 'transition-none',
+            )}
+            role="alertdialog"
+          >
+            <h2 id="story-delete-title" className="text-lg font-semibold text-foreground">
+              Delete story?
+            </h2>
+            <p id="story-delete-description" className="mt-2 text-sm leading-relaxed text-muted">
+              This will permanently remove your story from the rail and local storage.
+            </p>
+
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <button
+                className={cn(
+                  'inline-flex h-10 items-center justify-center rounded-full border border-border-subtle bg-transparent px-4 text-sm font-medium text-foreground',
+                  'transition-transform duration-200 hover:scale-105 active:scale-95',
+                  prefersReducedMotion && 'transition-none hover:scale-100 active:scale-100',
+                )}
+                type="button"
+                onClick={() => setIsDeleteDialogOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={cn(
+                  'inline-flex h-10 items-center justify-center rounded-full bg-red-500 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30',
+                  'transition-transform duration-200 hover:scale-105 active:scale-95',
+                  prefersReducedMotion && 'transition-none hover:scale-100 active:scale-100',
+                )}
+                type="button"
+                onClick={handleDeleteConfirm}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

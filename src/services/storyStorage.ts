@@ -156,3 +156,17 @@ export const saveStoredStories = (stories: StoredStory[]): void => {
     // Ignore storage failures so the feed still works without persistence.
   }
 }
+
+export const removeStoredStory = (storyId: string): void => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const remainingStories = loadStoredStories().filter((story) => story.id !== storyId)
+
+    saveStoredStories(remainingStories)
+  } catch {
+    // Ignore storage failures so deletion still updates React state.
+  }
+}

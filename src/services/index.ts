@@ -4,6 +4,7 @@ export {
 	filterActiveStoredStories,
 	loadStoredStories,
 	getNextStoredStoryExpirationDelay,
+	removeStoredStory,
 	saveStoredStories,
 	isStoryExpired,
 	type StoredStory,

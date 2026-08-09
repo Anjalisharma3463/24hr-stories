@@ -7,6 +7,7 @@ import {
   fromStoredStory,
   loadStoredStories,
   getNextStoredStoryExpirationDelay,
+  removeStoredStory,
   saveStoredStories,
 } from '@/services'
 import type { StoryRailData, StoryRailUser } from '@/types/story'
@@ -92,6 +93,16 @@ export function App() {
 
       return hasChanges ? nextStories : currentStories
     })
+  }
+
+  const handleStoryDeleted = (storyId: string) => {
+    removeStoredStory(storyId)
+
+    setStories((currentStories) => currentStories.filter((story) => story.id !== storyId))
+
+    if (selectedStoryId === storyId) {
+      setSelectedStoryId(null)
+    }
   }
 
   useEffect(() => {
@@ -204,6 +215,8 @@ export function App() {
 
       <StoryViewer
         key={selectedStory?.id ?? 'closed'}
+        currentUserUsername={mockStoryRailData.currentUser.username}
+        onStoryDeleted={handleStoryDeleted}
         onStoryViewed={handleStoryViewed}
         initialStoryId={selectedStory?.id ?? null}
         onClose={() => setSelectedStoryId(null)}
